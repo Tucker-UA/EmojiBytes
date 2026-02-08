@@ -1,3 +1,6 @@
+### Imports, as simple as possible
+import sys, os
+
 
 ### Emoji Encodings
 ### List one for each base system I want to do
@@ -25,6 +28,9 @@ emoji256ary = {i : chr(127815+i) for i in range(256)}
 # Want to only pick emoji that are easily discernable from each other
 masterEmojiList = [ ]
 
+# Gives all encodings here
+encodings = {'2' : emojiBinary, '4' : emojiQuartary, '16' : emojiHex, '256' : emoji256ary}
+
 def byteToEncodedString(byte, encoding):
     # Only works when our encoding is 2, 4, 16, or 256 
 
@@ -49,7 +55,7 @@ def bytesToEncodedString(byteList, encoding):
     return encodedString
 
 def stringToEncodedString(plaintext, encoding):
-    encodedString = bytesToEncodedString(bytes(plaintext), encoding)
+    encodedString = bytesToEncodedString(bytes(plaintext, 'utf-8'), encoding)
 
     return encodedString
 
@@ -133,20 +139,89 @@ def toFile(filename, filetype, contents):
     with open(filename, filetype) as file:
         file.write(contents)
 
-def main(test, encoding):
-    binaryTest = test.encode()
-    print("Encoding used: ", encoding)
-    print(test)
-    encodedString = bytesToEncodedString(binaryTest, encoding)
-    print(encodedString)
-    decodedBytes = stringToDecodedBytes(encodedString, encoding)
-    print(decodedBytes)
-    decodedString = decodedBytes.decode()
-    print(decodedString)
-    toFile(test, 'w', encodedString)
-    print(fileToDecodedString(test, 'w', encoding))
+def parseArgs(args):
+    # Function to parse the command line arguments
+    # Returns a dict in this format
+    # { 'name'      : name of this file                 type: string
+    #   'message'   : message to encode or decode       type: string
+    #   'inputFile' : file name(s) of input file(s)     type: string
+    #   'outputFile': file name(s) of output file(s)    type: string
+    #   'filetype'  : file type of file, i.e., wb or w  type: string
+    #   'decoding'  : true if decoding, false o.w       type: boolean
+    #   'encoding'  : name of encoding to use           type: string}
+
+    helpMessage = """emoji-bytes [options] file_or_message
+
+    Options:
+     -d, --decode: set program to decoding mode
+     -t, --target: target file to output to
+     -b, --binary: set filetype to binary for read/write
+     --encoding:   name of encoding to use, assumes 256 by default
+     -h, --help:   print help text"""
+
+    name = args[0]
+    
+    options = []
+
+    possibleOptions = ['-d', '--decode', '--encoding', '-h', '--help', '-t', '--target']
+    targetOptions = ['-t', '--target']
+    decodeOptions = ['-d', '--decode']
+    encodeOptions = ['--encoding']
+    fileOptions   = ['-b', '--binary']
+    helpOptions   = ['-h', '--help']
+
+
+    for i, arg in enumerate(args[1:]):
+        if arg[0] == '-' and arg in possibleOptions:
+            if arg in helpOptions:
+                raise Exception(helpMessage)
+
+            options.append((arg, i+1))
+            
+
+    parsed = {'name' : name, 'decoding' : False, 'encoding' : '256', 'filetype': ''}
+    
+    if options == []:
+        index = 0
+    else:
+        for arg, i in options:
+            index = i
+            if arg in decodeOptions:
+                parsed['decoding'] = True
+            elif arg in targetOptions:
+                index += 1
+                parsed['outputFile'] = args[i+1]
+            elif arg in encodeOptions:
+                index += 1
+                parsed['encoding'] = args[i+1]
+            elif arg in fileOptions:
+                parsed['filetype'] = 'b'
+
+    if len(args) <= index+1:
+        raise Exception(helpMessage)
+    elif os.path.isfile(args[index+1]):
+        parsed['inputFile'] = ' '.join(args[index+1:])
+        parsed['filetype'] = 'r' + parsed['filetype'] if not parsed['decoding'] else 'w' + parsed['filetype']
+    else:
+        parsed['message'] = ' '.join(args[index+1:])
+
+    return parsed
+
+def main(args):
+    parsed = parseArgs(args)
+
+    encoding = encodings[parsed['encoding']]
+
+    if 'inputFile' in parsed:
+        inputFile = parsed['inputFile']
+        filetype = parsed['filetype']
+        contents = fileToEncodedString(inputFile, filetype, encoding) if not parsed['decoding'] else fileToDecodedString(inputFile, filetype, encoding)
+    else:
+        message = parsed['message']
+        contents = stringToEncodedString(message, encoding) if not parsed['decoding'] else stringToDecodedString(message, encoding)
+
+    return contents
 
 if __name__ == "__main__":
-    test = "Hello"
-    encoding = emoji256ary
-    main(test, encoding)
+    args = sys.argv
+    print(main(args))
