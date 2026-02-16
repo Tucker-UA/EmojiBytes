@@ -4,46 +4,74 @@ import sys, os
 
 ### Emoji Encodings
 ### List one for each base system I want to do
-### Ideally, I will eventually have one giant one that I can use
-### to make arbitrary bases with within a certain threshold
 
 ### FORMAT:
 ###     list with each entry a unicode 8 digit hexcode
 ###     Mapping goes from index ---> UGGGGGGGG
 ###     0's are added at the front of the number if needed
 
-
+# First encoding, symbols are ❌ & ✔ 
 emojiBinary = {0 : "\u274C", 1 : "\u2714"}
-# First encoding, symbols are ❌& ✔ 
+# Second encoding, symbols are 🍇, 🍈, 🍉, & 🍊 
 emojiQuartary = {0 : '\U0001f347', 1 : '\U0001f348',
                  2 : '\U0001f349', 3 : '\U0001f34a'}
-# Second encoding, symbols are 🍇, 🍈, 🍉, & 🍊 
-emojiHex = {i : chr(127815+i) for i in range(16)}
 # Third encoding, symbols are an extension of emojiQuartary
-emoji256ary = {i : chr(127815+i) for i in range(256)}
+emojiHex = {i : chr(127815+i) for i in range(16)}
 # Fourth encoding, should be able to handle whole bytes now
-
-
-# Large list to take care of all distinct emoji
-# Want to only pick emoji that are easily discernable from each other
-masterEmojiList = [ ]
+emoji256ary = {i : chr(127815+i) for i in range(256)}
 
 # Gives all encodings here
 encodings = {'2' : emojiBinary, '4' : emojiQuartary, '16' : emojiHex, '256' : emoji256ary}
+
+possibleLengths = [len(enc) for enc in encodings.values()] # All possible lengths 
+
+# Function for checking if I can encode/decode using given encoding
+
+def checkEncoding(encoding):
+    n = len(encoding)
+    
+    if n not in possibleLengths:
+        raise Exception(f"Encoding with length {n} currently not supported for decoding")
+
+    return True # Returns True to show that the encoding is a good one
+
+### Functions for reading to and from files
+
+def fromFile(filename, filetype):
+    # Gets contents from filename with filetype
+    # filetype: either 'rb' or 'r'
+    # returns the contents of file
+    
+    with open(filename, filetype) as file:
+        contents = file.read()
+
+    return contents
+
+def toFile(filename, filetype, contents):
+    # Sends contents to filename with filetype
+    # filetype: either 'wb' or 'w'
+    # returns the filename given
+
+    with open(filename, filetype) as file:
+        file.write(contents)
+
+    return filename
+
+### Functions for encoding strings and bytes
 
 def byteToEncodedString(byte, encoding):
     # Only works when our encoding is 2, 4, 16, or 256 
 
     n = len(encoding)
 
-    possibleLengths = [2,4,16,256]
+    checkEncoding(encoding)
 
-    if n not in possibleLengths:
-        raise Exception(f"Encoding with length {n} currently not supported for encoding")
-
+    # Gets the max power of 2 that divides n
     i = max(j for j in range(1,9) if n % (2**j) == 0)
+    numPerByte = 8 // i
 
-    nBits = [((byte << (i*(j+1))) // 256) % n for j in range(8 // i)]
+    # Breaks up the bytes into smaller chunks for encodings that can't do a full byte
+    nBits = [((byte << (i*(j+1))) // 256) % n for j in range(numPerByte)]
 
     encodedString = ''.join([encoding[bits] for bits in nBits])
 
@@ -65,11 +93,8 @@ def fileToEncodedString(filename, filetype, encoding):
     # filename: path to file
     # filetype: either 'rb' for binary or 'r' for latin-1 text
 
-    # Will need to figure out buffering later
-    with open(filename, filetype) as file:
-        contents = file.read()
-
-    newFile = 'encoded-' + filename
+    contents = fromFile(filename, filetype)
+    newFile = filename + '-encoded'
     
     if filetype == 'rb':
         encodedContents = bytesToEncodedString(contents, encoding)
@@ -82,26 +107,29 @@ def fileToEncodedString(filename, filetype, encoding):
 
     return encodedContents
 
+### Functions for decoding strings
+
 def stringToDecodedBytes(encodedString, encoding):
     # Takes in a string of emoji and outputs the corresponding bytes
     # If the encoding is not one of the four possible lengths, raise an error
 
     n = len(encoding)
 
-    possibleLengths = [2,4,16,256]
+    checkEncoding(encoding)
 
-    if n not in possibleLengths:
-        raise Exception(f"Encoding with length {n} currently not supported for decoding")
-
+    # i gets the max power of 2 that the length of the encoding is divisible by
+    # This is used to find how many emoji are needed for bytes
     i = max(j for j in range(1,9) if n % (2**j) == 0)
 
     decoding = {v : k for k, v in encoding.items()}
 
+    # Translated each given emoji in the encoded string to an int
     decodedInts = [decoding[c] for c in encodedString]
 
     numPerByte = 8 // i
     decodedBytes = []
 
+    # loops through all the decoded ints and builds a single byte for each round of a loop
     for j, d in enumerate(decodedInts[::numPerByte]):
         b = d
         for k in range(1,numPerByte):
@@ -123,21 +151,14 @@ def fileToDecodedString(filename, filetype, encoding):
     # filename: path to file
     # filetype: type of file to write, either 'wb' or 'w'
 
-    with open(filename, 'r') as file:
-        contents = file.read()
-
-    newFile = 'decoded-' + filename
+    contents = fromFile(filename, 'r')
+    newFile = filename + '-decoded'
     decodedContents = stringToDecodedString(contents, encoding)
     toFile(newFile, filetype, decodedContents)
 
     return decodedContents
 
-def toFile(filename, filetype, contents):
-    # Sends contents to filename with filetype
-    # filetype: either 'wb' or 'w'
-
-    with open(filename, filetype) as file:
-        file.write(contents)
+### Functions for parsing arguments and running the script when called
 
 def parseArgs(args):
     # Function to parse the command line arguments
@@ -163,20 +184,23 @@ def parseArgs(args):
     
     options = []
 
-    possibleOptions = ['-d', '--decode', '--encoding', '-h', '--help', '-t', '--target']
     targetOptions = ['-t', '--target']
     decodeOptions = ['-d', '--decode']
     encodeOptions = ['--encoding']
     fileOptions   = ['-b', '--binary']
     helpOptions   = ['-h', '--help']
+    possibleOptions = targetOptions + decodeOptions + encodeOptions + fileOptions + helpOptions
 
 
     for i, arg in enumerate(args[1:]):
-        if arg[0] == '-' and arg in possibleOptions:
-            if arg in helpOptions:
-                raise Exception(helpMessage)
-
-            options.append((arg, i+1))
+        if arg[0] == '-':
+            if arg[1] != '-':
+                allArgs = arg[1:]
+                
+                for a in allArgs:
+                    options.append(('-'+a, i+1))
+            else:
+                options.append((arg, i+1))
             
 
     parsed = {'name' : name, 'decoding' : False, 'encoding' : '256', 'filetype': ''}
@@ -196,6 +220,8 @@ def parseArgs(args):
                 parsed['encoding'] = args[i+1]
             elif arg in fileOptions:
                 parsed['filetype'] = 'b'
+            elif arg in helpOptions:
+                raise Exception(helpMessage)
 
     if len(args) <= index+1:
         raise Exception(helpMessage)
@@ -225,3 +251,4 @@ def main(args):
 if __name__ == "__main__":
     args = sys.argv
     print(main(args))
+    
