@@ -1,6 +1,9 @@
 ### Imports, as simple as possible
 import sys, os
 
+### Constants
+
+DEFAULTOUTPUT = "last-message"
 
 ### Emoji Encodings
 ### List one for each base system I want to do
@@ -234,7 +237,12 @@ def parseArgs(args):
     return parsed
 
 def main(args):
-    parsed = parseArgs(args)
+    try:
+        parsed = parseArgs(args)
+    except Exception as e:
+        contents = ""
+        print(e)
+        return contents
 
     encoding = encodings[parsed['encoding']]
 
@@ -245,6 +253,11 @@ def main(args):
     else:
         message = parsed['message']
         contents = stringToEncodedString(message, encoding) if not parsed['decoding'] else stringToDecodedString(message, encoding)
+    
+    if 'outputFile' in parsed:
+        toFile(parsed['outputFile'], 'w', contents)
+    else:
+        toFile(DEFAULTOUTPUT, 'w', contents)
 
     return contents
 
