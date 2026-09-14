@@ -18,10 +18,8 @@ python3 emoji-bytes [options] file or message
 
 | Input                             | Output        |
 |----------------------------------|---------------|
-| emoji-bytes Howdy Stranger!| 🎏🎶🎾🎫🏀🍧🎚🎻🎹🎨🎵🎮🎬🎹🍨
-|
-| emoji-bytes -d 🎏🎶🎾🎫🏀🍧🎚🎻🎹🎨🎵🎮🎬🎹🍨
-| Howdy Stranger!|
+| emoji-bytes Howdy Stranger!| 🎏🎶🎾🎫🏀🍧🎚🎻🎹🎨🎵🎮🎬🎹🍨|
+| emoji-bytes -d 🎏🎶🎾🎫🏀🍧🎚🎻🎹🎨🎵🎮🎬🎹🍨 | Howdy Stranger!|
 
 ### LLM Disclosure
 
