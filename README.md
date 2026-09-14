@@ -1,7 +1,7 @@
 # EmojiBytes
 
 A short script that will convert back and forth from strings into emojis.
-The original motivation came from the humor of sending emojis as your only means of communication, but I found that several people had beat me to the punch, for example the [base100 rust project]{https://github.com/AdamNiederer/base100}. 
+The original motivation came from the humor of sending emojis as your only means of communication, but I found that several people had beat me to the punch, for example the [base100 rust project](https://github.com/AdamNiederer/base100). 
 
 ## How to use
 
